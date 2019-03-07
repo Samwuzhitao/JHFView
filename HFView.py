@@ -1,6 +1,8 @@
 #! python2
 #coding: utf-8
 ''' 
+2019/03/07
+    注释掉break语句，解决FuncA在多个位置调用FuncB的情况
 '''
 import os
 import re
@@ -114,7 +116,7 @@ class HFView(QtGui.QWidget, Ui_HFView):
                     if name == callee:
                         self.Functions[name].callers.append((name2, addr))  # name的调用者中添加name2
                         # TODO: 如果name2中多处调用name，怎么处理
-                        break
+                        #break
 
         for name, func in self.Functions.iteritems():
             print '\n%-030s @ 0x%08X - 0x%08X' %(name, func.start, func.end)
