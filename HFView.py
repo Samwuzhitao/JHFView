@@ -1,8 +1,15 @@
 #! python2
 #coding: utf-8
-''' 
+''' 升级记录
+2017/12/28
+    调用JLINKARM_ExecCommand()设置器件名称
 2019/03/07
     注释掉break语句，解决FuncA在多个位置调用FuncB的情况
+'''
+'''
+MDK反汇编指令：fromelf --text -a -c -o "$L@L.asm" "#L"
+IAR反汇编指令：ielfdumparm --code --source $TARGET_PATH$ -o $TARGET_PATH$.dis
+GCC反汇编指令：objdump -d $@ > $@.dis
 '''
 import os
 import re
@@ -108,7 +115,9 @@ class HFView(QtGui.QWidget, Ui_HFView):
             if not self.Functions:
                 self.parseDis_GCC(txt)
                 if not self.Functions:
-                    return              # disassembler parse fail
+                    self.parseDis_IAR(txt)
+                    if not self.Functions:
+                        return              # disassembler parse fail
 
         for name in self.Functions:
             for name2, func in self.Functions.iteritems():
@@ -145,6 +154,23 @@ class HFView(QtGui.QWidget, Ui_HFView):
                     address, callee = int(match2.group(1), 16), match2.group(2)
                     self.Functions[name].callees.append((address, callee))
 
+    def parseDis_IAR(self, txt):
+        for match in re.finditer(r'\n            ([A-Za-z_][A-Za-z0-9_]+):\n(   (0x[0-9a-f]+): 0x[0-9a-f]{4}[\s\S]+?)\n((  // [}a-z])|(            \$)|(            `.text))', txt):
+            name, start, end = match.group(1), int(match.group(3), 16), int(match.group(3), 16)
+
+            lastline = match.group(2).strip().split('\n')[-1]
+            match2 = re.match(r'   (0x[0-9a-f]+): 0x[0-9a-f]{4}', lastline)
+            if match2:
+                end = int(match2.group(1), 16)
+
+            self.Functions[name] = Function(start, end, [], [])
+
+            for line in match.group(2).split('\n'):
+                match2 = re.match(r'   (0x[0-9a-f]+): 0x[0-9a-f]{4} 0x[0-9a-f]{4}\s+BL\s+([A-Za-z_][A-Za-z0-9_]+)\s+; 0x[0-9a-f]+', line)
+                if match2:
+                    address, callee = int(match2.group(1), 16), match2.group(2)
+                    self.Functions[name].callees.append((address, callee))
+
     def parseDis_GCC(self, txt):
         for match in re.finditer(r'\n([0-9a-f]{8}) <([A-Za-z_][A-Za-z_0-9]*)>:([\s\S]+?)(?=\n\n)', txt):
             name, start, end = match.group(2), int(match.group(1), 16), int(match.group(1), 16)
@@ -165,6 +191,10 @@ class HFView(QtGui.QWidget, Ui_HFView):
     @QtCore.pyqtSlot()
     def on_btnRead_clicked(self):
         try:
+            if not os.path.exists(self.linDLL.text()):
+                QtGui.QMessageBox.critical(self, u'JLinkARM.dll路径错误', u'JLinkARM.dll路径错误，请更正')
+                return
+
             self.jlink = ctypes.cdll.LoadLibrary(self.linDLL.text())
 
             self.jlink.JLINKARM_Open()
@@ -232,15 +262,17 @@ class HFView(QtGui.QWidget, Ui_HFView):
 
     @QtCore.pyqtSlot()
     def on_btnParse_clicked(self):
-        if not self.Functions:
-            self.parseDis(self.cmbDis.currentText())
-            if not self.Functions:
-                self.txtMain.append('\nDisassembler parse fail!\n')
-                return
+        if not os.path.exists(self.cmbDis.currentText()):
+            QtGui.QMessageBox.critical(self, u'反汇编文件路径错误', u'反汇编文件路径错误，请更正')
+            return
 
-            self.Program_Start = min([func.start for (name, func) in self.Functions.iteritems()])
-            self.Program_End   = max([func.end   for (name, func) in self.Functions.iteritems()])
-            print '\nProgram @ 0x%08X - 0x%08X' %(self.Program_Start, self.Program_End)
+        self.parseDis(self.cmbDis.currentText())
+        if not self.Functions:
+            self.txtMain.append('\nDisassembler parse fail!\n')
+            return
+
+        self.Program_Start = min([func.start for (name, func) in self.Functions.iteritems()])
+        self.Program_End   = max([func.end   for (name, func) in self.Functions.iteritems()])
 
         self.on_btnRead_clicked()
         if self.CPURegs['IPSR'] != 3:
