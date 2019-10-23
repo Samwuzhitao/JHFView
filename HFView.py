@@ -155,18 +155,18 @@ class HFView(QtGui.QWidget, Ui_HFView):
                     self.Functions[name].callees.append((address, callee))
 
     def parseDis_IAR(self, txt):
-        for match in re.finditer(r'\n            ([A-Za-z_][A-Za-z0-9_]+):\n(   (0x[0-9a-f]+): 0x[0-9a-f]{4}[\s\S]+?)\n((  // [}a-z])|(            \$)|(            `.text))', txt):
+        for match in re.finditer(r'\n\s+([A-Za-z_][A-Za-z0-9_]+):\n(\s+(0x[0-9a-f]+): 0x[0-9a-f]{4}[\s\S]+?)\n\s+((// [}a-z])|(\$)|(`.text))', txt):
             name, start, end = match.group(1), int(match.group(3), 16), int(match.group(3), 16)
 
             lastline = match.group(2).strip().split('\n')[-1]
-            match2 = re.match(r'   (0x[0-9a-f]+): 0x[0-9a-f]{4}', lastline)
+            match2 = re.match(r'\s+(0x[0-9a-f]+): 0x[0-9a-f]{4}', lastline)
             if match2:
                 end = int(match2.group(1), 16)
 
             self.Functions[name] = Function(start, end, [], [])
 
             for line in match.group(2).split('\n'):
-                match2 = re.match(r'   (0x[0-9a-f]+): 0x[0-9a-f]{4} 0x[0-9a-f]{4}\s+BL\s+([A-Za-z_][A-Za-z0-9_]+)\s+; 0x[0-9a-f]+', line)
+                match2 = re.match(r'\s+(0x[0-9a-f]+): 0x[0-9a-f]{4} 0x[0-9a-f]{4}\s+BL\s+([A-Za-z_][A-Za-z0-9_]+)\s+; 0x[0-9a-f]+', line)
                 if match2:
                     address, callee = int(match2.group(1), 16), match2.group(2)
                     self.Functions[name].callees.append((address, callee))
