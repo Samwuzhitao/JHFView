@@ -7,9 +7,9 @@ This tool read Core Register content and Stack content throught J-Link, and anal
 
 note 1: make sure there is no code in your HardFault_Handler
 
-note 2: Call Stack analysis need disassembly file, now support Keil MDK、GCC and IAR
+note 2: Call Stack analysis need disassembly file, now support Keil MDK, GCC and IAR
 
-note 3: to run this software, you need Python 2.7 and PyQt4
+note 3: to run this software, you need Python 3.6 and PyQt5
 
 beyond that, this tool will also print analysis result of disassembly file, that is functions the function calls
 ![](https://github.com/XIVN1987/JHFView/blob/master/%E6%88%AA%E5%9B%BE2.jpg)

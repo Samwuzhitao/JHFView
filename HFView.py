@@ -1,11 +1,4 @@
-#! python2
-#coding: utf-8
-''' 升级记录
-2017/12/28
-    调用JLINKARM_ExecCommand()设置器件名称
-2019/03/07
-    注释掉break语句，解决FuncA在多个位置调用FuncB的情况
-'''
+#! python3
 '''
 MDK反汇编指令：fromelf --text -a -c -o "$L@L.asm" "#L"
 IAR反汇编指令：ielfdumparm --code --source $TARGET_PATH$ -o $TARGET_PATH$.dis
@@ -16,11 +9,11 @@ import re
 import sys
 import ctypes
 import collections
-import ConfigParser
+import configparser
 
-import sip
-sip.setapi('QString', 2)
-from PyQt4 import QtCore, QtGui, uic
+from PyQt5 import QtCore, QtGui, QtWidgets, uic
+from PyQt5.QtCore import pyqtSlot, pyqtSignal, Qt
+from PyQt5.QtWidgets import QApplication, QWidget, QMessageBox, QFileDialog
 
 
 Function = collections.namedtuple('Function','start end callees callers')   # callees: 此函数调用的函数
@@ -29,18 +22,18 @@ Function = collections.namedtuple('Function','start end callees callers')   # ca
                                                                             #   caller1 address1，caller1在address1处调用了此函数
 
 '''
-class HFView(QtGui.QWidget):
-    def __init__(self, parent=None):
-        super(HFView, self).__init__(parent)
-        
-        uic.loadUi('HFView.ui', self)
-'''
 from HFView_UI import Ui_HFView
-class HFView(QtGui.QWidget, Ui_HFView):
+class HFView(QWidget, Ui_HFView):
     def __init__(self, parent=None):
         super(HFView, self).__init__(parent)
         
         self.setupUi(self)
+'''
+class HFView(QWidget):
+    def __init__(self, parent=None):
+        super(HFView, self).__init__(parent)
+        
+        uic.loadUi('HFView.ui', self)
 
         self.initSetting()
 
@@ -77,37 +70,37 @@ class HFView(QtGui.QWidget, Ui_HFView):
         
     def initSetting(self):
         if not os.path.exists('setting.ini'):
-            open('setting.ini', 'w')
+            open('setting.ini', 'w', encoding='utf-8')
         
-        self.conf = ConfigParser.ConfigParser()
-        self.conf.read('setting.ini')
+        self.conf = configparser.ConfigParser()
+        self.conf.read('setting.ini', encoding='utf-8')
         
         if not self.conf.has_section('globals'):
             self.conf.add_section('globals')
             self.conf.set('globals', 'dllpath', '')
             self.conf.set('globals', 'dispath', '[]')
-        self.linDLL.setText(self.conf.get('globals', 'dllpath').decode('gbk'))
-        for path in eval(self.conf.get('globals', 'dispath')): self.cmbDis.insertItem(10, path)
+        self.linDLL.setText(self.conf.get('globals', 'dllpath'))
+        self.cmbDis.addItems(eval(self.conf.get('globals', 'dispath')))
     
-    @QtCore.pyqtSlot()
+    @pyqtSlot()
     def on_btnDLL_clicked(self):
-        path = QtGui.QFileDialog.getOpenFileName(caption=u'JLinkARM.dll路径', filter=u'动态链接库文件 (*.dll)', directory=self.linDLL.text())
-        if path != '':
-            self.linDLL.setText(path)
+        dllpath, filter = QFileDialog.getOpenFileName(caption='JLink_x64.dll路径', filter='动态链接库文件 (*.dll)', directory=self.linDLL.text())
+        if dllpath != '':
+            self.linDLL.setText(dllpath)
     
-    @QtCore.pyqtSlot()
+    @pyqtSlot()
     def on_btnDis_clicked(self):
-        path = QtGui.QFileDialog.getOpenFileName(caption=u'反汇编文件路径', filter=u'disassembler (*.dis *.asm *.txt)', directory=self.cmbDis.currentText())
-        if path != '':
-            self.cmbDis.insertItem(0, path)
+        dispath, filter = QFileDialog.getOpenFileName(caption='反汇编文件路径', filter='disassembler (*.dis *.asm *.txt)', directory=self.cmbDis.currentText())
+        if dispath != '':
+            self.cmbDis.insertItem(0, dispath)
             self.cmbDis.setCurrentIndex(0)
 
-    @QtCore.pyqtSlot(str)
+    @pyqtSlot(str)
     def on_cmbDis_currentIndexChanged(self, txt):
         self.Functions = collections.OrderedDict()
 
     def parseDis(self, path):
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             txt = f.read()
 
             self.Functions = collections.OrderedDict()
@@ -120,22 +113,22 @@ class HFView(QtGui.QWidget, Ui_HFView):
                         return              # disassembler parse fail
 
         for name in self.Functions:
-            for name2, func in self.Functions.iteritems():
+            for name2, func in self.Functions.items():
                 for addr, callee in func.callees:                           # name2调用的函数中有name
                     if name == callee:
                         self.Functions[name].callers.append((name2, addr))  # name的调用者中添加name2
                         # TODO: 如果name2中多处调用name，怎么处理
                         #break
 
-        for name, func in self.Functions.iteritems():
-            print '\n%-030s @ 0x%08X - 0x%08X' %(name, func.start, func.end)
+        for name, func in self.Functions.items():
+            print(f'\n{name:30s} @ 0x{func.start:08X} - 0x{func.end:08X}')
             for addr, name in func.callees:
-                print '    0x%08X %s' %(addr, name)
-        print '\n'
-        for name, func in self.Functions.iteritems():
-            print '\n%-030s called by:' %name
+                print(f'    0x{addr:08X} {name}')
+        print('\n')
+        for name, func in self.Functions.items():
+            print(f'\n{name:30s} called by:')
             for name, addr in func.callers:
-                print '    %-030s @ 0x%08X' %(name, addr)
+                print(f'    {name:30s} @ 0x{addr:08X}')
 
     def parseDis_MDK(self, txt):
         for match in re.finditer(r'\n    ([A-Za-z_][A-Za-z_0-9]*)\n(        (0x[0-9a-f]{8}):[\s\S]+?)(?=\n    [A-Za-z_\$])', txt):
@@ -188,11 +181,11 @@ class HFView(QtGui.QWidget, Ui_HFView):
                     address, callee = int(match2.group(1), 16), match2.group(2)
                     self.Functions[name].callees.append((address, callee))
 
-    @QtCore.pyqtSlot()
+    @pyqtSlot()
     def on_btnRead_clicked(self):
         try:
             if not os.path.exists(self.linDLL.text()):
-                QtGui.QMessageBox.critical(self, u'JLinkARM.dll路径错误', u'JLinkARM.dll路径错误，请更正')
+                QMessageBox.critical(self, 'JLink_x64.dll路径错误', 'JLink_x64.dll路径错误，请更正')
                 return
 
             self.jlink = ctypes.cdll.LoadLibrary(self.linDLL.text())
@@ -237,15 +230,12 @@ class HFView(QtGui.QWidget, Ui_HFView):
             if self.CPURegs['IPSR'] == 3:
                 self.fault_diagnosis()
 
-            if self.cmbStkSel.currentText() == 'Auto':
-                if (self.CPURegs['R14(LR)'] >> 2) & 1 == 0:
-                    self.Stack_SP = self.CPURegs['MSP']
-                else:
-                    self.Stack_SP = self.CPURegs['PSP']
+            if (self.CPURegs['R14(LR)'] >> 2) & 1 == 0:
+                self.Stack_SP = self.CPURegs['MSP']
             else:
-                self.Stack_SP = self.CPURegs[self.cmbStkSel.currentText()]
+                self.Stack_SP = self.CPURegs['PSP']
 
-            self.Stack_LEN = int(self.linStkSize.text())
+            self.Stack_LEN = 64
             self.Stack_Mem = (ctypes.c_uint32 * self.Stack_LEN)()
             self.jlink.JLINKARM_ReadMemU32(self.Stack_SP, self.Stack_LEN, self.Stack_Mem, 0)
             self.jlink.JLINKARM_Close()
@@ -258,12 +248,12 @@ class HFView(QtGui.QWidget, Ui_HFView):
                 self.txtMain.append('%08X:  %s' %(self.Stack_SP+(self.Stack_LEN // 8)*8*4, ' '.join('%08X' %self.Stack_Mem[(self.Stack_LEN // 8)*8+i] for i in range(self.Stack_LEN % 8))))
 
         except Exception as e:
-            self.txtMain.append('\nError:\n%s' %e)
+            self.txtMain.append(f'\nError:\n{e}')
 
-    @QtCore.pyqtSlot()
+    @pyqtSlot()
     def on_btnParse_clicked(self):
         if not os.path.exists(self.cmbDis.currentText()):
-            QtGui.QMessageBox.critical(self, u'反汇编文件路径错误', u'反汇编文件路径错误，请更正')
+            QMessageBox.critical(self, '反汇编文件路径错误', '反汇编文件路径错误，请更正')
             return
 
         self.parseDis(self.cmbDis.currentText())
@@ -271,8 +261,8 @@ class HFView(QtGui.QWidget, Ui_HFView):
             self.txtMain.append('\nDisassembler parse fail!\n')
             return
 
-        self.Program_Start = min([func.start for (name, func) in self.Functions.iteritems()])
-        self.Program_End   = max([func.end   for (name, func) in self.Functions.iteritems()])
+        self.Program_Start = min([func.start for (name, func) in self.Functions.items()])
+        self.Program_End   = max([func.end   for (name, func) in self.Functions.items()])
 
         self.on_btnRead_clicked()
         if self.CPURegs['IPSR'] != 3:
@@ -286,7 +276,7 @@ class HFView(QtGui.QWidget, Ui_HFView):
                 (self.Program_Start <= self.Stack_Mem[index+6] <= self.Program_End and self.Stack_Mem[index+6]%2 == 0) and 
                 ((self.Stack_Mem[index+7] >> 24) & 1 == 1)):    # 中断服务
 
-                for name, func in self.Functions.iteritems():   # 找出中断压栈时正在执行的函数
+                for name, func in self.Functions.items():       # 找出中断压栈时正在执行的函数
                     if func.start <= self.Stack_Mem[index+6] <= func.end:
                         self.CallStack.append((self.Stack_Mem[index+6], name))
                         break
@@ -427,25 +417,23 @@ class HFView(QtGui.QWidget, Ui_HFView):
                 if (reg_CFSR & SCB_UFSR_DIVBYZERO0_Msk):
                     self.txtMain.append('a divide by zero has taken place (can be set only if DIV_0_TRP is set)')
 
-    @QtCore.pyqtSlot()
+    @pyqtSlot()
     def on_btnClear_clicked(self):
         self.txtMain.clear()
     
     def closeEvent(self, evt):
         self.closed = True
         
-        self.conf.set('globals', 'dllpath', self.linDLL.text().encode('gbk'))
+        self.conf.set('globals', 'dllpath', self.linDLL.text())
         
-        dispaths = [self.cmbDis.itemText(i) for i in range(self.cmbDis.count())]
-        if self.cmbDis.currentIndex() not in [0, -1]: dispaths = [self.cmbDis.currentText()] + dispaths     # 将当前项置于最前
-        dispaths = list(collections.OrderedDict.fromkeys(dispaths))                                         # 保留顺序去重
-        self.conf.set('globals', 'dispath', repr(dispaths[:10]))
+        dispath = [self.cmbDis.currentText()] + [self.cmbDis.itemText(i) for i in range(self.cmbDis.count())]
+        self.conf.set('globals', 'dispath', repr(list(collections.OrderedDict.fromkeys(dispath))))   # 保留顺序去重
 
-        self.conf.write(open('setting.ini', 'w'))
+        self.conf.write(open('setting.ini', 'w', encoding='utf-8'))
         
 
 if __name__ == "__main__":
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     rtt = HFView()
     rtt.show()
-    app.exec_()
+    app.exec()

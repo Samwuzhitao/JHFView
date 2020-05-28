@@ -8,7 +8,7 @@
     <x>0</x>
     <y>0</y>
     <width>720</width>
-    <height>500</height>
+    <height>520</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -52,7 +52,7 @@
         </sizepolicy>
        </property>
        <property name="text">
-        <string>JLinkARM.dll路径：</string>
+        <string>JLink_x64.dll路径：</string>
        </property>
       </widget>
      </item>
@@ -79,7 +79,7 @@
      <item>
       <widget class="QLabel" name="lblDis">
        <property name="text">
-        <string>反汇编文件  路径：</string>
+        <string>反汇编文件   路径：</string>
        </property>
       </widget>
      </item>
@@ -105,90 +105,7 @@
    <item>
     <layout class="QHBoxLayout" name="hLayout3">
      <item>
-      <widget class="QLabel" name="lblStkSel">
-       <property name="text">
-        <string>栈选择：</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="cmbStkSel">
-       <property name="minimumSize">
-        <size>
-         <width>58</width>
-         <height>0</height>
-        </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>58</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <item>
-        <property name="text">
-         <string>Auto</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>MSP</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>PSP</string>
-        </property>
-       </item>
-      </widget>
-     </item>
-     <item>
       <spacer name="hSpacer31">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeType">
-        <enum>QSizePolicy::Fixed</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item>
-      <widget class="QLabel" name="lblStkSize">
-       <property name="text">
-        <string>栈大小：</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLineEdit" name="linStkSize">
-       <property name="minimumSize">
-        <size>
-         <width>58</width>
-         <height>0</height>
-        </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>58</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>32</string>
-       </property>
-       <property name="maxLength">
-        <number>5</number>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="hSpacer32">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
