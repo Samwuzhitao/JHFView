@@ -100,7 +100,7 @@ class HFView(QWidget):
         self.Functions = collections.OrderedDict()
 
     def parseDis(self, path):
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
             txt = f.read()
 
             self.Functions = collections.OrderedDict()
